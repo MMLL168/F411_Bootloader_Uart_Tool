@@ -7,12 +7,13 @@ import time
 import struct
 
 # 版本信息
-__version__ = "1.2.0"  # 更新版本號
+__version__ = "1.3.0"  # 更新版本號
+__author__ = "Marlon"  # 添加作者信息
 
 class BootloaderGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"STM32 UART Bootloader Tool v{__version__}")  # 在標題中顯示版本號
+        self.root.title(f"STM32 UART Bootloader Tool v{__version__} - by {__author__}")  # 在標題中顯示版本號和作者
         self.root.geometry("800x600")
         
         self.serial_port = None
@@ -96,9 +97,17 @@ class BootloaderGUI:
         status_frame = ttk.LabelFrame(main_frame, text="狀態訊息", padding="5")
         status_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
+        # 清除按鈕和作者信息
+        footer_frame = ttk.Frame(status_frame)
+        footer_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        # 添加作者信息標籤
+        author_label = ttk.Label(footer_frame, text=f"Created by {__author__}", font=("Arial", 8))
+        author_label.pack(side=tk.LEFT, padx=5)
+        
         # 清除按鈕
-        self.clear_btn = ttk.Button(status_frame, text="清除日誌", command=self.clear_log)
-        self.clear_btn.pack(anchor="ne", pady=(0, 5))
+        self.clear_btn = ttk.Button(footer_frame, text="清除日誌", command=self.clear_log)
+        self.clear_btn.pack(side=tk.RIGHT, padx=5)
 
         # 狀態訊息文本框
         self.status_text = scrolledtext.ScrolledText(status_frame, height=15, width=80)
@@ -112,7 +121,7 @@ class BootloaderGUI:
         main_frame.rowconfigure(4, weight=1)
         
         # 顯示版本信息
-        self.log_message(f"STM32 UART Bootloader Tool v{__version__} 已啟動")
+        self.log_message(f"STM32 UART Bootloader Tool v{__version__} by {__author__} 已啟動")
  
     def clear_log(self):
         """清除狀態訊息日誌"""
