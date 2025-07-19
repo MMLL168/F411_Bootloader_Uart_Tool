@@ -70,7 +70,7 @@ class BootloaderGUI:
         ttk.Entry(operation_frame, textvariable=self.address_var, width=20).grid(row=1, column=1, padx=5, sticky=tk.W)
         
         # 新增長度設置
-        ttk.Label(operation_frame, text="長度:").grid(row=1, column=2, padx=5, sticky=tk.W)
+        ttk.Label(operation_frame, text="讀取長度:").grid(row=1, column=2, padx=5, sticky=tk.W)
         self.length_var = tk.StringVar(value="0x100")
         ttk.Entry(operation_frame, textvariable=self.length_var, width=10).grid(row=1, column=3, padx=5, sticky=tk.W)
         
@@ -293,29 +293,69 @@ class BootloaderGUI:
             try:
                 self.log_message("開始擦除Flash...")
                 self.progress['value'] = 0
-                
+
                 # 發送擦除命令
                 if self.send_command(0x44):  # CMD_ERASE_MEMORY
                     # 發送擦除扇區數量 (擦除所有應用程序區域)
                     num_sectors = 6  # 擦除扇區2-7
                     checksum = 0xFF ^ num_sectors
                     data = bytes([num_sectors, checksum])
-                    
+
                     self.serial_port.write(data)
-                    
-                    # 等待擦除完成 (可能需要較長時間)
+
+                    # 🔧 帶進度顯示的等待擦除完成
                     self.log_message("等待擦除完成...")
-                    response = self.serial_port.read(1)
-                    if len(response) == 1 and response[0] == 0x79:
-                        self.log_message("Flash擦除完成")
-                        self.progress['value'] = 100
-                    else:
-                        self.log_message("Flash擦除失敗")
+                    
+                    # 預估總時間 (6個扇區 * 2秒/扇區 = 12秒)
+                    estimated_time = num_sectors * 2  # 12秒
+                    check_interval = 0.1  # 每100ms檢查一次
+                    max_wait_time = 20.0  # 最大等待20秒
+                    
+                    start_time = time.time()
+                    
+                    # 設置短超時，循環檢查
+                    old_timeout = self.serial_port.timeout
+                    self.serial_port.timeout = check_interval
+                    
+                    try:
+                        while True:
+                            elapsed_time = time.time() - start_time
+                            
+                            # 更新進度條
+                            progress = min(90, (elapsed_time / estimated_time) * 90)
+                            self.progress['value'] = progress
+                            
+                            # 檢查是否收到回應
+                            response = self.serial_port.read(1)
+                            if len(response) == 1 and response[0] == 0x79:
+                                self.log_message("Flash擦除完成")
+                                self.progress['value'] = 100
+                                break
+                            
+                            # 檢查超時
+                            if elapsed_time > max_wait_time:
+                                self.log_message(f"Flash擦除超時 ({max_wait_time}秒)")
+                                return
+                            
+                            # 顯示進度
+                            if int(elapsed_time) % 2 == 0:  # 每2秒更新一次訊息
+                                self.log_message(f"擦除進行中... ({elapsed_time:.1f}s)")
+                            
+                            time.sleep(0.1)  # 避免CPU佔用過高
+                            
+                    finally:
+                        # 恢復原始超時設置
+                        self.serial_port.timeout = old_timeout
                         
+                else:
+                    self.log_message("發送擦除命令失敗")
+                    return
+
             except Exception as e:
                 self.log_message(f"擦除錯誤: {str(e)}")
-                
+
         threading.Thread(target=erase_thread, daemon=True).start()
+
 
     def get_custom_version(self):
         """獲取自定義Bootloader版本 (增強版)"""
