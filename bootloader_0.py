@@ -698,15 +698,10 @@ class BootloaderGUI:
                 if data:
                     # 將數據轉換為更易讀的格式並顯示
                     bytes_per_line = 16
-                    formatted_lines = []
                     
                     for i in range(0, len(data), bytes_per_line):
                         chunk = data[i:i+bytes_per_line]
                         line = ", ".join([f"{b:02X}" for b in chunk])
-                        formatted_lines.append(line)
-                    
-                    self.log_message(f"讀取數據 (地址 0x{address:08X}, 長度 {length}):")
-                    for i, line in enumerate(formatted_lines):
                         self.log_message(f"0x{address + i*bytes_per_line:08X}: {line}")
                         
                     self.log_message(f"讀取完成，共 {len(data)} 字節")
@@ -756,15 +751,10 @@ class BootloaderGUI:
             if len(data) == length + 1:
                 # 將數據轉換為更易讀的格式：每個字節後面加逗號和空格，每16個字節換行
                 bytes_per_line = 16
-                formatted_lines = []
                 
                 for i in range(0, len(data), bytes_per_line):
                     chunk = data[i:i+bytes_per_line]
                     line = ", ".join([f"{b:02X}" for b in chunk])
-                    formatted_lines.append(line)
-                
-                self.log_message(f"讀取數據 (地址 0x{address:08X}):")
-                for i, line in enumerate(formatted_lines):
                     self.log_message(f"0x{address + i*bytes_per_line:08X}: {line}")
                     
                 return True
@@ -774,37 +764,41 @@ class BootloaderGUI:
         except Exception as e:
             self.log_message(f"讀取塊錯誤: {str(e)}")
             return False
+
+    # APP起始地址
+    APP_START_ADDRESS = 0x08008000
                 
     def jump_to_app(self):
         """跳轉到應用程序"""
         try:
-            address_str = self.address_var.get()
-            address = int(address_str, 16) if address_str.startswith('0x') else int(address_str)
-            
-            # 發送跳轉命令
+            self.log_message("正在跳轉到APP...")
+
+            # 發送Go命令
             if not self.send_command(0x21):  # CMD_GO
-                self.log_message("跳轉命令發送失敗")
+                self.log_message("發送Go命令失敗")
                 return
-                
-            # 發送地址
-            addr_bytes = struct.pack('>I', address)  # 大端序
-            addr_checksum = 0
-            for b in addr_bytes:
-                addr_checksum ^= b
-                
-            self.serial_port.write(addr_bytes + bytes([addr_checksum]))
-            
-            # 等待ACK
-            response = self.serial_port.read(1)
-            if len(response) == 1 and response[0] == 0x79:
-                self.log_message(f"跳轉到地址 0x{address:08X} 成功")
-                # 跳轉後Bootloader會退出，所以斷開連接
-                self.toggle_connection()
-            else:
-                self.log_message("跳轉失敗")
-                
+
+            # 發送APP起始地址 (大端序)
+            addr_bytes = [
+                (self.APP_START_ADDRESS >> 24) & 0xFF,
+                (self.APP_START_ADDRESS >> 16) & 0xFF,
+                (self.APP_START_ADDRESS >> 8) & 0xFF,
+                self.APP_START_ADDRESS & 0xFF
+            ]
+
+            # 計算校驗和
+            checksum = 0
+            for byte in addr_bytes:
+                checksum ^= byte
+
+            # 發送地址和校驗和
+            self.serial_port.write(bytes(addr_bytes + [checksum]))
+
+            self.log_message("跳轉命令發送成功！")
+            self.log_message("請檢查串口輸出是否有APP啟動訊息...")
+
         except Exception as e:
-            self.log_message(f"跳轉錯誤: {str(e)}")
+            self.log_message(f"跳轉失敗: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
