@@ -6,10 +6,13 @@ import threading
 import time
 import struct
 
+# 版本信息
+__version__ = "1.0.0"  # 添加版本號
+
 class BootloaderGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("STM32 UART Bootloader Tool")
+        self.root.title(f"STM32 UART Bootloader Tool v{__version__}")  # 在標題中顯示版本號
         self.root.geometry("800x600")
         
         self.serial_port = None
@@ -107,6 +110,9 @@ class BootloaderGUI:
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(4, weight=1)
+        
+        # 顯示版本信息
+        self.log_message(f"STM32 UART Bootloader Tool v{__version__} 已啟動")
  
     def clear_log(self):
         """清除狀態訊息日誌"""
