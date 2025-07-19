@@ -7,7 +7,7 @@ import time
 import struct
 
 # 版本信息
-__version__ = "1.0.0"  # 添加版本號
+__version__ = "1.2.0"  # 更新版本號
 
 class BootloaderGUI:
     def __init__(self, root):
